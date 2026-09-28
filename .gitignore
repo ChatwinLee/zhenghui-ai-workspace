@@ -1,0 +1,19 @@
+node_modules
+dist
+playwright-report
+test-results
+.DS_Store
+
+*.tsbuildinfo
+
+# Local tools and private configuration
+.agents/
+.codex/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Unfinished document render
+_deprecated/contracts/*.docx
