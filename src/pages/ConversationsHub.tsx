@@ -1,5 +1,6 @@
+import { SessionAgentIcon } from "../components/SessionAgentIcon";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Bot, MessageCircle, Plus, Users } from "lucide-react";
+import { ArrowLeft, MessageCircle, Plus, Users } from "lucide-react";
 import { useStore } from "../lib/store";
 import { canViewGroup, createGroup, enterprisePeople } from "../lib/group-chat";
 import { rolePeople } from "../lib/types";
@@ -69,12 +70,14 @@ export default function ConversationsHub({
     ...agents.map((s) => ({
       id: s.id,
       kind: "agent" as const,
+      provider: s.provider || "Codex",
       name: s.name,
       preview: s.preview,
     })),
     ...groups.map((g) => ({
       id: g.id,
       kind: "group" as const,
+      provider: "",
       name: g.name,
       preview:
         g.messages.at(-1)?.text ||
@@ -176,7 +179,11 @@ export default function ConversationsHub({
               >
                 <Avatar>
                   <AvatarFallback>
-                    {row.kind === "agent" ? <Bot /> : <Users />}
+                    {row.kind === "agent" ? (
+                      <SessionAgentIcon runtime={row.provider} />
+                    ) : (
+                      <Users />
+                    )}
                   </AvatarFallback>
                 </Avatar>
                 <span className="flex min-w-0 flex-1 flex-col gap-1 text-left">
