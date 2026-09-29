@@ -1,3 +1,4 @@
+import { Tabs, TabsList, TabsTrigger } from "./components/ui/tabs";
 import GroupChats from "./pages/GroupChats";
 import Approvals from "./pages/Approvals";
 import SkillMarket from "./pages/SkillMarket";
@@ -87,8 +88,8 @@ export default function App() {
   const pageLabel: Record<Page, string> = {
     customers: "客户管理",
     projects: role === "sales" ? "需求管理" : "项目管理",
-    chat: "Agent对话",
-    groups: "群聊",
+    chat: "会话",
+    groups: "会话",
     notifications: "系统通知",
     approvals: "审批",
     audit: "审计日志",
@@ -138,12 +139,12 @@ export default function App() {
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      isActive={page === "chat"}
-                      tooltip="Agent对话"
+                      isActive={page === "chat" || page === "groups"}
+                      tooltip="会话"
                       onClick={() => navigate("chat")}
                     >
                       <MessageCircle />
-                      <span>Agent对话</span>
+                      <span>会话</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
@@ -161,16 +162,6 @@ export default function App() {
                       ) && (
                         <span className="ml-auto size-2 rounded-full bg-primary" />
                       )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      isActive={page === "groups"}
-                      tooltip="群聊"
-                      onClick={() => navigate("groups")}
-                    >
-                      <Users />
-                      <span>群聊</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   {nav.map((n) => (
@@ -217,12 +208,27 @@ export default function App() {
         <SidebarInset className="min-h-0 min-w-0 overflow-hidden">
           <div className="flex h-full min-h-0">
             <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              {page !== "chat" && (
+              {page !== "chat" && page !== "groups" && (
                 <div className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
                   <SidebarTrigger />
                   <span className="text-sm text-muted-foreground">
                     {pageLabel[page]}
                   </span>
+                </div>
+              )}
+              {(page === "chat" || page === "groups") && (
+                <div className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
+                  <SidebarTrigger />
+                  <span className="text-sm font-medium">会话</span>
+                  <Tabs
+                    value={page}
+                    onValueChange={(value) => navigate(value as Page)}
+                  >
+                    <TabsList aria-label="会话类型">
+                      <TabsTrigger value="chat">Agent 对话</TabsTrigger>
+                      <TabsTrigger value="groups">群聊</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 </div>
               )}
               {page === "chat" && (
