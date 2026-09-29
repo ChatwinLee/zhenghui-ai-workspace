@@ -1,6 +1,6 @@
 # 正惠科技 AI Native 工作台
 
-React + TypeScript + Vite 交互 Demo，使用 shadcn/ui 官方组件与 `b0` 预设（Radix Nova、中性色、Inter）。仅参考飞书的导航布局：可折叠一级侧栏，「会话」入口顶部通过「Agent 对话 / 群聊」标签切换各自的会话列表。客户、需求、项目和审计页面直接展示列表，经营统计集中在管理视角的概览页。
+React + TypeScript + Vite 交互 Demo，使用 shadcn/ui 官方组件与 `b0` 预设（Radix Nova、中性色、Inter）。仅参考飞书的导航布局：可折叠一级侧栏，「会话」入口顶部通过「全部 / Agent 会话 / 群聊」筛选同一份会话列表。客户、需求、项目和审计页面直接展示列表，经营统计集中在管理视角的概览页。
 
 ## 启动
 
@@ -60,7 +60,8 @@ bun x skills add shadcn/ui --agent codex --yes
 - `src/App.tsx`：布局、四角色切换、导航与搜索。
 - `src/lib/store.tsx`：共享状态、项目流转、会话与日志。
 - `src/lib/group-chat.ts`：业务群同步、成员范围与消息规则。
-- `src/pages/GroupChats.tsx`：群聊列表、成员选择、文本及附件消息、引用回复。
+- `src/pages/ConversationsHub.tsx`：统一会话列表、类型筛选与创建群聊。
+- `src/pages/GroupChats.tsx`：群聊详情、文本及附件消息、引用回复。
 - `src/lib/data.ts`：银行业务演示数据。
 - `src/lib/migrate-demo.ts`：旧演示数据迁移。
 - `src/pages/Customers.tsx`：CRM、拜访转写与知识引用。

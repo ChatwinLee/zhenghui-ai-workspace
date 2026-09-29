@@ -1,5 +1,4 @@
-import { Tabs, TabsList, TabsTrigger } from "./components/ui/tabs";
-import GroupChats from "./pages/GroupChats";
+import ConversationsHub from "./pages/ConversationsHub";
 import Approvals from "./pages/Approvals";
 import SkillMarket from "./pages/SkillMarket";
 import { useState, type CSSProperties } from "react";
@@ -35,7 +34,6 @@ import {
 import CreateDialog, { type CreateKind } from "./components/CreateDialog";
 import Customers from "./pages/Customers";
 import Projects from "./pages/Projects";
-import AgentWorkspace from "./pages/AgentWorkspace";
 import { AgentAccount } from "./components/AgentAccount";
 import Conversations from "./pages/Conversations";
 import Management from "./pages/Management";
@@ -217,25 +215,12 @@ export default function App() {
                 </div>
               )}
               {(page === "chat" || page === "groups") && (
-                <div className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
-                  <SidebarTrigger />
-                  <span className="text-sm font-medium">会话</span>
-                  <Tabs
-                    value={page}
-                    onValueChange={(value) => navigate(value as Page)}
-                  >
-                    <TabsList aria-label="会话类型">
-                      <TabsTrigger value="chat">Agent 对话</TabsTrigger>
-                      <TabsTrigger value="groups">群聊</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-              )}
-              {page === "chat" && (
-                <AgentWorkspace sessionId={sessionId} onSession={openSession} />
-              )}
-              {page === "groups" && (
-                <GroupChats key={role} onProject={openProject} />
+                <ConversationsHub
+                  key={role}
+                  sessionId={sessionId}
+                  onSession={openSession}
+                  onProject={openProject}
+                />
               )}
               {page === "skills" && <SkillMarket />}
               {page === "customers" && (

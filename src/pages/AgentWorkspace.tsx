@@ -47,7 +47,9 @@ import {
 export default function AgentWorkspace({
   sessionId,
   onSession,
+  hideList = false,
 }: {
+  hideList?: boolean;
   sessionId: string;
   onSession: (id: string) => void;
 }) {
@@ -298,102 +300,108 @@ export default function AgentWorkspace({
   );
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1">
-      <aside
-        id="agent-session-list"
-        aria-label="会话列表"
-        className={`${mobileList ? "flex" : listCollapsed ? "hidden" : "hidden md:flex"} w-64 shrink-0 flex-col bg-sidebar p-3 lg:w-72`}
-      >
-        <div className="mb-4 flex h-10 items-center gap-2 px-1">
-          <SidebarTrigger />
-          <span className="font-semibold">Agent对话</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="ml-auto md:hidden"
-            onClick={() => setMobileList(false)}
-            aria-label="关闭会话列表"
-          >
-            <X />
-          </Button>
-        </div>
-        <Button
-          variant="secondary"
-          className="mb-6 w-full justify-start rounded-full"
-          onClick={() => open("")}
+      {!hideList && (
+        <aside
+          id="agent-session-list"
+          aria-label="会话列表"
+          className={`${mobileList ? "flex" : listCollapsed ? "hidden" : "hidden md:flex"} w-64 shrink-0 flex-col bg-sidebar p-3 lg:w-72`}
         >
-          <Plus data-icon="inline-start" />
-          新会话
-        </Button>
-        <ScrollArea className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:!block">
-          {(["置顶会话", "会话"] as const).map((label, i) => {
-            const items = sessions.filter((s) => !!s.pinned === (i === 0));
-            return (
-              <section key={label} className="mb-5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mb-1 justify-start"
-                  onClick={() =>
-                    setCollapsed((v) => ({ ...v, [label]: !v[label] }))
-                  }
-                  aria-expanded={!collapsed[label]}
-                >
-                  {label}
-                  <ChevronDown
-                    className={collapsed[label] ? "-rotate-90" : ""}
-                  />
-                </Button>
-                {!collapsed[label] &&
-                  items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="group relative flex items-center"
-                    >
-                      <Button
-                        variant={item.id === sessionId ? "secondary" : "ghost"}
-                        className="h-10 w-full min-w-0 justify-start gap-2 rounded-full pr-16"
-                        onClick={() => open(item.id)}
-                        title={item.name}
+          <div className="mb-4 flex h-10 items-center gap-2 px-1">
+            <SidebarTrigger />
+            <span className="font-semibold">Agent对话</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto md:hidden"
+              onClick={() => setMobileList(false)}
+              aria-label="关闭会话列表"
+            >
+              <X />
+            </Button>
+          </div>
+          <Button
+            variant="secondary"
+            className="mb-6 w-full justify-start rounded-full"
+            onClick={() => open("")}
+          >
+            <Plus data-icon="inline-start" />
+            新会话
+          </Button>
+          <ScrollArea className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:!block">
+            {(["置顶会话", "会话"] as const).map((label, i) => {
+              const items = sessions.filter((s) => !!s.pinned === (i === 0));
+              return (
+                <section key={label} className="mb-5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mb-1 justify-start"
+                    onClick={() =>
+                      setCollapsed((v) => ({ ...v, [label]: !v[label] }))
+                    }
+                    aria-expanded={!collapsed[label]}
+                  >
+                    {label}
+                    <ChevronDown
+                      className={collapsed[label] ? "-rotate-90" : ""}
+                    />
+                  </Button>
+                  {!collapsed[label] &&
+                    items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="group relative flex items-center"
                       >
-                        <SessionAgentIcon runtime={item.provider || "Codex"} />
-                        <span className="truncate">{item.name}</span>
-                      </Button>
-                      <div className="absolute right-1 flex opacity-0 focus-within:opacity-100 group-hover:opacity-100">
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7"
-                          aria-label={
-                            item.pinned
-                              ? `取消置顶 ${item.name}`
-                              : `置顶 ${item.name}`
+                          variant={
+                            item.id === sessionId ? "secondary" : "ghost"
                           }
-                          onClick={() => togglePin(item)}
+                          className="h-10 w-full min-w-0 justify-start gap-2 rounded-full pr-16"
+                          onClick={() => open(item.id)}
+                          title={item.name}
                         >
-                          {item.pinned ? <PinOff /> : <Pin />}
+                          <SessionAgentIcon
+                            runtime={item.provider || "Codex"}
+                          />
+                          <span className="truncate">{item.name}</span>
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7"
-                          aria-label={`归档 ${item.name}`}
-                          onClick={() => archive(item)}
-                        >
-                          <Archive />
-                        </Button>
+                        <div className="absolute right-1 flex opacity-0 focus-within:opacity-100 group-hover:opacity-100">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7"
+                            aria-label={
+                              item.pinned
+                                ? `取消置顶 ${item.name}`
+                                : `置顶 ${item.name}`
+                            }
+                            onClick={() => togglePin(item)}
+                          >
+                            {item.pinned ? <PinOff /> : <Pin />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7"
+                            aria-label={`归档 ${item.name}`}
+                            onClick={() => archive(item)}
+                          >
+                            <Archive />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                {!collapsed[label] && !items.length && (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">
-                    {i === 0 ? "暂无置顶会话" : "暂无会话"}
-                  </p>
-                )}
-              </section>
-            );
-          })}
-        </ScrollArea>
-      </aside>
+                    ))}
+                  {!collapsed[label] && !items.length && (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">
+                      {i === 0 ? "暂无置顶会话" : "暂无会话"}
+                    </p>
+                  )}
+                </section>
+              );
+            })}
+          </ScrollArea>
+        </aside>
+      )}
       <div
         className={`${mobileList ? "hidden md:flex" : "flex"} min-h-0 min-w-0 flex-1 flex-col`}
       >
@@ -401,7 +409,7 @@ export default function AgentWorkspace({
           <Button
             variant="ghost"
             size="icon"
-            className="hidden shrink-0 md:inline-flex"
+            className={hideList ? "hidden" : "hidden shrink-0 md:inline-flex"}
             aria-label={
               listCollapsed ? "展开 Agent 会话侧边栏" : "折叠 Agent 会话侧边栏"
             }
@@ -414,7 +422,7 @@ export default function AgentWorkspace({
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className={hideList ? "hidden" : "md:hidden"}
             aria-label="打开会话列表"
             onClick={() => setMobileList(true)}
           >
