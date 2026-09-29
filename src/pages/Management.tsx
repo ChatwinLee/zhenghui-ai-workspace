@@ -137,7 +137,7 @@ export default function Management({
       <div className={layout}>
         <PageHeader
           title="Agent管理"
-          description="管理公司云端与本地的 Agent。"
+          description="管理公司云端与本地的 Agent 运行时。数据开发仅处理公开数据，不提供模型本地部署服务。"
         >
           <Button
             onClick={() => {

@@ -71,19 +71,19 @@ const steps: Step[] = [
     work: "销售通过手机记录拜访，AI 基于企业知识库点评，提炼数据范围、字段、数量和格式。",
     output: "建立唯一项目编号，先提交 50 条长三角制造业企业样例需求。",
     notify: "提交给产品，通知产品负责人。",
-    group: "此时关联项目上下文，生成 AI 方案会话。",
+    group: "需求提交管理员审批，尚未创建业务群。",
     position: { x: 0, y: 100 },
   },
   {
     id: "draft",
-    title: "自动生成方案",
-    owner: "产品 Agent",
-    caption: "按产品 Skill 产出初稿",
+    title: "产品编写方案",
+    owner: "产品",
+    caption: "审批通过 → 产品编写方案",
     input: "销售提交的需求、客户资料与沟通上下文。",
-    work: "云端运行时自动创建会话，按照需求拆解、字段定义与方案编写 Skill 生成产品文档。",
+    work: "管理员确认承接后，由产品人工编写需求拆解、字段定义与交付方案。",
     output: "产品方案初稿，包含字段口径、交付范围和验收规则。",
     notify: "系统提醒产品人员确认初稿。",
-    group: "方案生成会话关联当前项目。",
+    group: "审批进入产品环节时自动建群，销售与产品加入。",
     position: { x: 285, y: 100 },
   },
   {
@@ -91,23 +91,23 @@ const steps: Step[] = [
     title: "确认方案并指派",
     owner: "产品",
     caption: "编辑 / 接受 → 指派研发",
-    input: "Agent 生成的产品方案初稿。",
+    input: "产品编写的方案初稿。",
     work: "产品可接受、退回或在线编辑方案；确认后选择一位或多位研发。未确认方案不能进入研发。",
     output: "已确认的产品方案、字段定义和研发负责人。",
-    notify: "通知被指派的研发，触发数据开发 Agent。",
-    group: "研发可查看项目历史和关联 AI 会话。",
+    notify: "通知被指派的研发，并自动加入该项目群。",
+    group: "研发加入同一个项目群，与销售、产品沟通。",
     position: { x: 570, y: 100 },
   },
   {
     id: "data",
-    title: "自动数据开发",
-    owner: "研发 Agent",
+    title: "开展数据开发",
+    owner: "研发",
     caption: "MCP 读取 → 转换 → 质检",
     input: "产品确认的字段、筛选范围、数量和验收标准。",
     work: "只读查询生产数据库，在测试 Workspace 中编写代码、转换字段并清洗数据，按 Skill 制定并执行质量规则。",
     output: "50 条样例、字段映射、执行记录与质量报告。",
     notify: "通过质量检查后，通知研发进行人工审核。",
-    group: "自动创建研发 Agent 会话，可在会话中继续修改。",
+    group: "研发可主动调用数据开发 Agent，业务流转不自动触发 Agent。",
     position: { x: 855, y: 100 },
   },
   {
@@ -131,7 +131,7 @@ const steps: Step[] = [
     work: "销售和产品把样例交给客户。如果需要修改，记录反馈并在原项目启动 R2、R3…，重新经过产品与研发。",
     output: "修改意见，或客户认可样例并准备签单。",
     notify: "需要修改时通知产品；认可后进入签约确认。",
-    group: "每轮 AI 会话与文件归档在同一个项目编号下。",
+    group: "各轮业务沿用同一个项目群，群消息按原顺序保留。",
     position: { x: 1140, y: 430 },
   },
   {
@@ -152,10 +152,10 @@ const steps: Step[] = [
     owner: "产品 + Agent",
     caption: "新一轮方案 → 再次确认",
     input: "签单后的完整范围和所有样例验证结论。",
-    work: "云端 Agent 生成正式方案；产品检查、编辑和确认，再次指派研发。样例阶段的方案保留为历史版本。",
+    work: "产品人工编写正式方案，检查并确认后再次指派研发。样例方案保留为历史版本。",
     output: "正式产品文档、完整字段口径和交付数量。",
     notify: "正式方案确认后再次通知研发。",
-    group: "复用已有成员，也可以补充新的研发与 Agent。",
+    group: "复用原项目群，指派新的研发时自动加入该群。",
     position: { x: 570, y: 430 },
   },
   {
@@ -164,7 +164,7 @@ const steps: Step[] = [
     owner: "研发 + Agent",
     caption: "完整数据 → 质检 → 人工审核",
     input: "正式方案与 50,000 条数据交付要求。",
-    work: "Agent 重新执行完整范围的数据开发与检验。研发 Review 通过后，交付正式文件；有问题继续原会话修正。",
+    work: "研发执行公开数据开发与检验，必要时主动调用 Agent 辅助。研发 Review 通过后，交付正式文件；有问题继续原会话修正。",
     output: "正式交付文件、质量报告与审核记录。",
     notify: "通知销售、产品正式交付完成。",
     group: "正式结果与此前每一轮样例、反馈均可追溯。",
@@ -392,7 +392,8 @@ export default function BusinessFlow() {
             </h1>
             <p className="text-sm leading-7 text-muted-foreground">
               以银行普惠金融企业名单筛选为例：销售发起，产品确认，研发交付。Agent
-              自动预处理，人在关键节点做决策。样例可以反复修改，签单后再走一遍正式方案与开发，整个过程始终属于同一个项目。
+              由人员主动调用辅助工作，流程不会自动触发
+              Agent。样例可以反复修改，签单后再走一遍正式方案与开发，整个过程始终属于同一个项目。
             </p>
           </div>
           <Badge variant="secondary">
@@ -553,13 +554,12 @@ export default function BusinessFlow() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="size-4" />
-                AI 会话贯穿全程
+                项目群聊贯穿全程
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm leading-7 text-muted-foreground">
-                提交给产品时自动建群，指派研发时自动加入。新成员可看全部历史，也可以邀请其他同事、运行时或
-                Agent，使用 @Agent 协作。
+                审批进入产品环节时自动建群，指派研发时自动加入。各角色也可选择企业成员手动建群，支持纯文本、附件和引用回复。附件下载后查看，不提供在线预览、云文档、消息搜索或表情包。
               </p>
             </CardContent>
           </Card>
@@ -587,7 +587,8 @@ export default function BusinessFlow() {
             </CardHeader>
             <CardContent>
               <p className="text-sm leading-7 text-muted-foreground">
-                生产数据库仅可读，测试 Workspace 按权限读写。人和 Agent
+                仅处理公开数据，不提供模型本地部署服务。生产数据库仅可读，测试
+                Workspace 按权限读写。人和 Agent
                 独立授权，审批、访问与状态流转均留痕，管理者可查看全公司项目进展。
               </p>
             </CardContent>

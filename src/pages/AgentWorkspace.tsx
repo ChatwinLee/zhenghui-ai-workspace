@@ -223,7 +223,7 @@ export default function AgentWorkspace({
             ) : (
               <Choice
                 label="Agent"
-                value={session?.provider || provider}
+                value={provider}
                 onChange={(v) => {
                   setProvider(v);
                   setModel(
@@ -254,16 +254,14 @@ export default function AgentWorkspace({
             ) : (
               <Choice
                 label="模型"
-                value={session?.model || model}
+                value={model}
                 onChange={setModel}
                 options={
-                  session
-                    ? [session.model || "默认模型"]
-                    : provider === "Codex"
-                      ? ["GPT-6", "GPT-5.5"]
-                      : provider === "Claude Code"
-                        ? ["Claude Sonnet", "Claude Opus"]
-                        : ["DeepSeek"]
+                  provider === "Codex"
+                    ? ["GPT-6", "GPT-5.5"]
+                    : provider === "Claude Code"
+                      ? ["Claude Sonnet", "Claude Opus"]
+                      : ["DeepSeek"]
                 }
               />
             )}

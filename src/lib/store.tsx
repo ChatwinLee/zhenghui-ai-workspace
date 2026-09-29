@@ -1,3 +1,4 @@
+import { initializeGroups, syncProjectGroup } from "./group-chat";
 import { manualWorkflow } from "./manual-workflow";
 import {
   createContext,
@@ -13,31 +14,6 @@ import type { Customer, Project, Role, Session, State } from "./types";
 import { rolePeople } from "./types";
 import { now, uid } from "./utils";
 const STORAGE_KEY = "zhenghui-workspace-v1";
-function resetAssignmentDemo(state: State): State {
-  const id = "ZH-2026-0921";
-  const demo = state.projects.find((p) => p.id === id);
-  const baseline = initialState.projects.find((p) => p.id === id)!;
-  if (demo) {
-    demo.stage = "solution";
-    demo.docAccepted = true;
-    demo.developers = [];
-    demo.assignmentSteps = [];
-    demo.qualityPassed = false;
-    demo.members = [...baseline.members];
-    demo.round = baseline.round;
-    demo.phase = baseline.phase;
-    demo.history = structuredClone(baseline.history);
-    demo.history.push({
-      time: "09-22 09:00",
-      title: "方案设计完成，待安排承接人",
-      detail: "产品可选择自己承接，或指派研发人员。",
-      actor: demo.product,
-    });
-  }
-  state.notices = state.notices.filter((n) => n.projectId !== id);
-  state.audits = state.audits.filter((a) => a.resource !== id);
-  return state;
-}
 function load(): State {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
@@ -49,14 +25,14 @@ function load(): State {
         parsed.policies &&
         parsed.sessions
       )
-        return manualWorkflow(
-          resetAssignmentDemo(migrateDemo(parsed, initialState)),
+        return initializeGroups(
+          manualWorkflow(migrateDemo(parsed, initialState)),
         );
     }
   } catch {
     /* Recover from unavailable storage or an invalid demo snapshot. */
   }
-  return manualWorkflow(structuredClone(initialState));
+  return initializeGroups(manualWorkflow(structuredClone(initialState)));
 }
 type Action =
   | "approve"
@@ -103,10 +79,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>("sales");
   useEffect(() => {
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(resetAssignmentDemo(structuredClone(state))),
-      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
       toast.error("浏览器存储不可用，本次操作仍保留在当前页面");
     }
@@ -218,7 +191,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         if (action === "approve") {
           project.stage = "solution";
-          project.members = Array.from(new Set([...project.members, "陈思远"]));
+          project.members = Array.from(
+            new Set([...project.members, project.product]),
+          );
           target = ["product"];
           body = "管理员已审批承接，请产品填写方案信息。";
         }
@@ -299,6 +274,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             if (c) c.status = "已成交";
           }
         }
+        syncProjectGroup(s, project);
         project.history.unshift({
           time: `09-22 ${now()}`,
           title: titles[action],
@@ -487,7 +463,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addSession,
         send,
         reset: () => {
-          setState(manualWorkflow(structuredClone(initialState)));
+          setState(
+            initializeGroups(manualWorkflow(structuredClone(initialState))),
+          );
           toast.success("演示数据已重置");
         },
       }}

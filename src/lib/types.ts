@@ -3,6 +3,7 @@ export type Page =
   | "customers"
   | "projects"
   | "chat"
+  | "groups"
   | "notifications"
   | "approvals"
   | "audit"
@@ -147,7 +148,31 @@ export interface Policy {
   production: boolean;
   workspace: boolean;
 }
+export interface GroupAttachment {
+  id: string;
+  name: string;
+  size: number;
+  data: string;
+}
+export interface GroupMessage {
+  id: string;
+  sender: string;
+  text: string;
+  attachments: GroupAttachment[];
+  replyToId?: string;
+  createdAt: string;
+}
+export interface GroupChat {
+  id: string;
+  name: string;
+  projectId?: string;
+  members: string[];
+  createdBy: string;
+  createdAt: string;
+  messages: GroupMessage[];
+}
 export interface State {
+  groupChats: GroupChat[];
   customers: Customer[];
   projects: Project[];
   sessions: Session[];

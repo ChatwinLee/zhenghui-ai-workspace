@@ -1,3 +1,4 @@
+import GroupChats from "./pages/GroupChats";
 import Approvals from "./pages/Approvals";
 import SkillMarket from "./pages/SkillMarket";
 import { useState, type CSSProperties } from "react";
@@ -87,6 +88,7 @@ export default function App() {
     customers: "客户管理",
     projects: role === "sales" ? "需求管理" : "项目管理",
     chat: "Agent对话",
+    groups: "群聊",
     notifications: "系统通知",
     approvals: "审批",
     audit: "审计日志",
@@ -161,6 +163,16 @@ export default function App() {
                       )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={page === "groups"}
+                      tooltip="群聊"
+                      onClick={() => navigate("groups")}
+                    >
+                      <Users />
+                      <span>群聊</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                   {nav.map((n) => (
                     <SidebarMenuItem key={n.id}>
                       <SidebarMenuButton
@@ -215,6 +227,9 @@ export default function App() {
               )}
               {page === "chat" && (
                 <AgentWorkspace sessionId={sessionId} onSession={openSession} />
+              )}
+              {page === "groups" && (
+                <GroupChats key={role} onProject={openProject} />
               )}
               {page === "skills" && <SkillMarket />}
               {page === "customers" && (
