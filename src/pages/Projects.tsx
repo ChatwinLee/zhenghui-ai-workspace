@@ -117,12 +117,12 @@ export default function Projects({
   const [feedback, setFeedback] = useState("");
   const [versionDoc, setVersionDoc] = useState<string | null>(null);
   const project = state.projects.find((p) => p.id === selectedId);
-  const isProduct = role === "product" || role === "admin";
+  const isProduct = role === "product";
   const isDev =
-    role === "admin" ||
+    role !== "admin" &&
     ((role === "product" || role === "dev") &&
       !!project?.developers.includes(rolePeople[role]));
-  const isSales = role === "sales" || role === "admin";
+  const isSales = role === "sales";
   useEffect(() => {
     setTab(
       role === "dev" ? "data" : role === "product" ? "document" : "requirement",

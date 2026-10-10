@@ -1,3 +1,4 @@
+import type { WorkflowConfig, WorkflowSnapshot } from "./workflow";
 export type Role = "sales" | "product" | "dev" | "admin";
 export type Page =
   | "customers"
@@ -9,7 +10,8 @@ export type Page =
   | "audit"
   | "security"
   | "runtimes"
-  | "skills";
+  | "skills"
+  | "workflows";
 export type Stage =
   | "demand"
   | "approval"
@@ -47,6 +49,7 @@ export interface Visit {
   transcript: { time: string; speaker: string; text: string }[];
 }
 export interface Project {
+  workflowSnapshot?: WorkflowSnapshot;
   assignmentSteps?: {
     role: "product" | "dev";
     names: string[];
@@ -172,6 +175,7 @@ export interface GroupChat {
   messages: GroupMessage[];
 }
 export interface State {
+  workflow?: WorkflowConfig;
   groupChats: GroupChat[];
   customers: Customer[];
   projects: Project[];

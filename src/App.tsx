@@ -1,9 +1,11 @@
+import Workflows from "./pages/Workflows";
 import ConversationsHub from "./pages/ConversationsHub";
 import Approvals from "./pages/Approvals";
 import SkillMarket from "./pages/SkillMarket";
 import { useState, type CSSProperties } from "react";
 import {
   Bell,
+  Workflow,
   Blocks,
   Bot,
   FolderKanban,
@@ -74,6 +76,7 @@ export default function App() {
           { id: "approvals", label: "审批", icon: ShieldCheck },
           { id: "projects", label: "全部项目", icon: FolderKanban },
           { id: "customers", label: "客户管理", icon: Users },
+          { id: "workflows", label: "自定义流程", icon: Workflow },
           { id: "audit", label: "审计日志", icon: ListTodo },
           { id: "security", label: "权限与安全", icon: ShieldCheck },
         ]
@@ -94,6 +97,7 @@ export default function App() {
     security: "权限与安全",
     runtimes: "Agent管理",
     skills: "Skill 广场",
+    workflows: "自定义流程",
   };
   return (
     <div className="flex h-svh min-h-0 flex-col overflow-hidden">
@@ -223,6 +227,7 @@ export default function App() {
                 />
               )}
               {page === "skills" && <SkillMarket />}
+              {page === "workflows" && role === "admin" && <Workflows />}
               {page === "customers" && (
                 <Customers
                   customerId={customerId}

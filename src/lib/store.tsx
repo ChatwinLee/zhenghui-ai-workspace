@@ -1,3 +1,4 @@
+import { initializeWorkflow, snapshot } from "./workflow";
 import { initializeGroups, syncProjectGroup } from "./group-chat";
 import { manualWorkflow } from "./manual-workflow";
 import {
@@ -25,14 +26,14 @@ function load(): State {
         parsed.policies &&
         parsed.sessions
       )
-        return initializeGroups(
+        return initializeWorkflow(initializeGroups(
           manualWorkflow(migrateDemo(parsed, initialState)),
-        );
+        ));
     }
   } catch {
     /* Recover from unavailable storage or an invalid demo snapshot. */
   }
-  return initializeGroups(manualWorkflow(structuredClone(initialState)));
+  return initializeWorkflow(initializeGroups(manualWorkflow(structuredClone(initialState))));
 }
 type Action =
   | "approve"
@@ -114,8 +115,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const p = state.projects.find((p) => p.id === id);
     if (!p) return false;
     const allowed =
-      role === "admin" ||
-      (!["approve", "decline"].includes(action) &&
+      (role === "admin" && ["approve", "decline"].includes(action)) ||
+      (role !== "admin" && !["approve", "decline"].includes(action) &&
         (["submit", "revise", "sign"].includes(action)
           ? role === "sales"
           : ["accept", "reject", "assign", "selfAssign", "handoff"].includes(
@@ -180,6 +181,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         let target: Role[] = [];
         let body = "";
         if (action === "submit") {
+          project.workflowSnapshot ??= snapshot(s.workflow!);
           project.stage = "approval";
           target = ["admin"];
           body = "销售已提交需求，请管理员审批是否承接。";
