@@ -120,8 +120,8 @@ export default function Projects({
   const isProduct = role === "product";
   const isDev =
     role !== "admin" &&
-    ((role === "product" || role === "dev") &&
-      !!project?.developers.includes(rolePeople[role]));
+    (role === "product" || role === "dev") &&
+    !!project?.developers.includes(rolePeople[role]);
   const isSales = role === "sales";
   useEffect(() => {
     setTab(

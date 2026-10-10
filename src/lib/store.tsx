@@ -26,14 +26,16 @@ function load(): State {
         parsed.policies &&
         parsed.sessions
       )
-        return initializeWorkflow(initializeGroups(
-          manualWorkflow(migrateDemo(parsed, initialState)),
-        ));
+        return initializeWorkflow(
+          initializeGroups(manualWorkflow(migrateDemo(parsed, initialState))),
+        );
     }
   } catch {
     /* Recover from unavailable storage or an invalid demo snapshot. */
   }
-  return initializeWorkflow(initializeGroups(manualWorkflow(structuredClone(initialState))));
+  return initializeWorkflow(
+    initializeGroups(manualWorkflow(structuredClone(initialState))),
+  );
 }
 type Action =
   | "approve"
@@ -116,7 +118,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!p) return false;
     const allowed =
       (role === "admin" && ["approve", "decline"].includes(action)) ||
-      (role !== "admin" && !["approve", "decline"].includes(action) &&
+      (role !== "admin" &&
+        !["approve", "decline"].includes(action) &&
         (["submit", "revise", "sign"].includes(action)
           ? role === "sales"
           : ["accept", "reject", "assign", "selfAssign", "handoff"].includes(
@@ -466,7 +469,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         send,
         reset: () => {
           setState(
-            initializeGroups(manualWorkflow(structuredClone(initialState))),
+            initializeWorkflow(
+              initializeGroups(manualWorkflow(structuredClone(initialState))),
+            ),
           );
           toast.success("演示数据已重置");
         },
