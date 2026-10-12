@@ -91,6 +91,26 @@ test("administrator can view fullscreen DSL, edit and publish without changing i
     .toBe(1512);
   await expect(page.getByText("节点配置", { exact: true })).toHaveCount(0);
   await expect(page.getByText("节点工具箱", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "添加节点", exact: true }).click();
+  await page
+    .getByRole("button", { name: "添加节点", exact: true })
+    .last()
+    .click();
+  await expect(page.getByText("发布前请完善配置")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "发布配置", exact: true }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "发布配置", exact: true }).click();
+  await expect(page.getByText("发布前请完善配置")).toBeVisible();
+  await expect(page.getByText("确认发布流程配置", { exact: true })).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: "删除节点", exact: true }).click();
+  await expect(page.getByText("发布前请完善配置")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "添加节点", exact: true })
+    .first()
+    .click();
   await page.locator('.react-flow__node[data-id="product"]').click();
   await expect(page.getByText("节点配置", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "关闭节点配置" }).click();

@@ -175,7 +175,7 @@ export default function Workflows() {
   const [note, setNote] = useState("");
   const selected = draft.nodes.find((n) => n.id === selectedId);
   const inflight = inFlight(state.projects);
-  const errors = validateWorkflow(draft);
+  const [errors, setErrors] = useState<string[]>([]);
   const dirty = JSON.stringify(draft) !== JSON.stringify(config.draft);
   const dsl = JSON.stringify(
     { schema: "zhenghui.workflow/v1", nodes: draft.nodes, edges: draft.edges },
@@ -210,6 +210,7 @@ export default function Workflows() {
   }
   function change(fn: (d: WorkflowDefinition) => void) {
     if (!editing || role !== "admin") return;
+    setErrors([]);
     setDraft((prev) => {
       const next = structuredClone(prev);
       fn(next);
@@ -264,6 +265,7 @@ export default function Workflows() {
     if (role !== "admin") return;
     if (confirm === "edit") {
       setSelectedId("");
+      setErrors([]);
       setShowToolbox(false);
       setEditing(true);
       setConfirm(null);
@@ -271,6 +273,7 @@ export default function Workflows() {
     }
     const definition = draft;
     const validation = validateWorkflow(definition);
+    setErrors(validation);
     if (validation.length) {
       toast.error(validation[0]);
       setConfirm(null);
@@ -676,8 +679,11 @@ export default function Workflows() {
                 保存草稿{dirty ? " · 未保存" : ""}
               </Button>
               <Button
-                disabled={errors.length > 0}
-                onClick={() => setConfirm("publish")}
+                onClick={() => {
+                  const validation = validateWorkflow(draft);
+                  setErrors(validation);
+                  if (validation.length === 0) setConfirm("publish");
+                }}
               >
                 发布配置
               </Button>
