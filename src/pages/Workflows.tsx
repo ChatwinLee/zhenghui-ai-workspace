@@ -13,6 +13,7 @@ import "@xyflow/react/dist/style.css";
 import {
   Copy,
   GitBranch,
+  X,
   Maximize2,
   Plus,
   Save,
@@ -164,7 +165,8 @@ export default function Workflows() {
   const [draft, setDraft] = useState<WorkflowDefinition>(() =>
     structuredClone(config.draft),
   );
-  const [selectedId, setSelectedId] = useState("intake");
+  const [selectedId, setSelectedId] = useState("");
+  const [showToolbox, setShowToolbox] = useState(false);
   const [editing, setEditing] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [fullscreenTab, setFullscreenTab] = useState("dsl");
@@ -184,7 +186,7 @@ export default function Workflows() {
     id: node.id,
     type: "workflow",
     position: node.position,
-    selected: node.id === selectedId,
+    selected: editing && node.id === selectedId,
     data: { node },
   }));
   const edges = draft.edges.map((e) => ({
@@ -261,6 +263,8 @@ export default function Workflows() {
   function publish() {
     if (role !== "admin") return;
     if (confirm === "edit") {
+      setSelectedId("");
+      setShowToolbox(false);
       setEditing(true);
       setConfirm(null);
       return;
@@ -302,400 +306,431 @@ export default function Workflows() {
       .filter((n) => n.id !== selectedId && n.kind !== "start")
       .map((n) => [n.id, n.name] as [string, string]),
   ];
+  const canvas = (
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={nodeTypes}
+      fitView
+      minZoom={0.2}
+      maxZoom={1.5}
+      nodesDraggable={editing}
+      nodesConnectable={editing}
+      deleteKeyCode={editing ? ["Backspace", "Delete"] : null}
+      onNodeClick={(_, node) => {
+        if (editing) setSelectedId(node.id);
+      }}
+      onPaneClick={() => setSelectedId("")}
+      elementsSelectable={editing}
+      onNodesChange={(changes) => {
+        const positions = applyNodeChanges(
+          changes.filter((c) => c.type === "position"),
+          nodes,
+        );
+        if (changes.some((c) => c.type === "position"))
+          change((d) => {
+            d.nodes.forEach((n) => {
+              const pos = positions.find((p) => p.id === n.id);
+              if (pos) n.position = pos.position;
+            });
+          });
+      }}
+      onEdgesDelete={(deleted) =>
+        change((d) => {
+          d.edges = d.edges.filter((e) => !deleted.some((x) => x.id === e.id));
+        })
+      }
+      onConnect={(c) =>
+        connect(
+          c.source,
+          c.target,
+          c.sourceHandle === "yes"
+            ? "yes"
+            : c.sourceHandle === "no"
+              ? "no"
+              : undefined,
+        )
+      }
+    >
+      <Background />
+      <Controls showInteractive={false} />
+    </ReactFlow>
+  );
+  const toolbox = (
+    <Card>
+      <CardHeader>
+        <CardTitle>节点工具箱</CardTitle>
+        <CardDescription>无需编写代码</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          <Choice
+            label="节点类型"
+            value={addKind}
+            options={kindOptions}
+            onChange={(v) => setAddKind(v as NodeKind)}
+            disabled={!editing}
+          />
+          <Button
+            variant="outline"
+            disabled={!editing}
+            onClick={() => {
+              const id = uid();
+              change((d) =>
+                d.nodes.push({
+                  id,
+                  kind: addKind,
+                  name: nodeKinds[addKind],
+                  binding: "product",
+                  position: { x: 580, y: d.nodes.length * 90 },
+                  ...(addKind === "condition"
+                    ? {
+                        field: "amount" as const,
+                        operator: "gte" as const,
+                        value: "100000",
+                      }
+                    : {}),
+                }),
+              );
+              setSelectedId(id);
+            }}
+          >
+            <Plus data-icon="inline-start" />
+            添加节点
+          </Button>
+        </FieldGroup>
+      </CardContent>
+      <CardFooter className="flex flex-col items-start gap-2">
+        <Badge variant="outline">
+          <GitBranch />
+          条件分流
+        </Badge>
+        <Badge variant="outline">全员会签后汇聚</Badge>
+        <p className="text-xs text-muted-foreground">
+          审批和条件节点的左下连接点表示通过 / 成立，右下表示拒绝 /
+          不成立。点击连线按 Delete 可移除。
+        </p>
+      </CardFooter>
+    </Card>
+  );
+  const inspector = (
+    <Card className="max-h-full overflow-y-auto">
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle>节点配置</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="关闭节点配置"
+            onClick={() => setSelectedId("")}
+          >
+            <X />
+          </Button>
+        </div>
+        <CardDescription>
+          {selected ? nodeKinds[selected.kind] : "选择画布中的节点"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {selected && (
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="node-name">节点名称</FieldLabel>
+              <Input
+                id="node-name"
+                value={selected.name}
+                disabled={!editing || selected.binding === "intake"}
+                onChange={(e) => patch({ name: e.target.value })}
+              />
+            </Field>
+            <Choice
+              label="处理人绑定"
+              value={selected.binding}
+              options={bindingOptions.filter(
+                ([b]) => b !== "intake" || selected.kind === "approval",
+              )}
+              disabled={!editing}
+              onChange={(v) =>
+                patch({
+                  binding: v as Binding,
+                  ...(v === "intake" ? { name: "需求承接审批" } : {}),
+                })
+              }
+            />
+            <FieldDescription>
+              只保存角色或项目关系，不保存固定人员姓名。审批节点的全部处理人均需通过。
+            </FieldDescription>
+            {selected.kind === "condition" && (
+              <>
+                <Choice
+                  label="条件字段"
+                  value={selected.field || "amount"}
+                  options={[
+                    ["amount", "项目金额（元）"],
+                    ["priority", "优先级"],
+                    ["phase", "交付阶段"],
+                  ]}
+                  disabled={!editing}
+                  onChange={(v) =>
+                    patch({
+                      field: v as WorkflowNode["field"],
+                      operator: v === "amount" ? "gte" : "eq",
+                      value:
+                        v === "amount"
+                          ? "100000"
+                          : v === "phase"
+                            ? "sample"
+                            : "高",
+                    })
+                  }
+                />
+                <Choice
+                  label="判断方式"
+                  value={selected.operator || "gte"}
+                  options={
+                    selected.field === "amount"
+                      ? [
+                          ["gte", "大于等于"],
+                          ["eq", "等于"],
+                        ]
+                      : [["eq", "等于"]]
+                  }
+                  disabled={!editing}
+                  onChange={(v) => patch({ operator: v as "gte" | "eq" })}
+                />
+                {selected.field === "amount" ? (
+                  <Field>
+                    <FieldLabel htmlFor="condition-value">条件值</FieldLabel>
+                    <Input
+                      id="condition-value"
+                      type="number"
+                      min="0"
+                      value={selected.value || ""}
+                      disabled={!editing}
+                      onChange={(e) => patch({ value: e.target.value })}
+                    />
+                  </Field>
+                ) : (
+                  <Choice
+                    label="条件值"
+                    value={selected.value || ""}
+                    options={
+                      selected.field === "phase"
+                        ? [
+                            ["sample", "样例交付"],
+                            ["full", "正式交付"],
+                          ]
+                        : [
+                            ["高", "高"],
+                            ["中", "中"],
+                            ["低", "低"],
+                          ]
+                    }
+                    disabled={!editing}
+                    onChange={(v) => patch({ value: v })}
+                  />
+                )}
+              </>
+            )}
+            {["condition", "approval"].includes(selected.kind) ? (
+              (["yes", "no"] as const).map((b) => (
+                <Choice
+                  key={b}
+                  label={b === "yes" ? "成立 / 通过后" : "不成立 / 拒绝后"}
+                  value={
+                    draft.edges.find(
+                      (e) => e.source === selected.id && e.branch === b,
+                    )?.target || "none"
+                  }
+                  options={targetOptions}
+                  disabled={!editing}
+                  onChange={(v) => connect(selected.id, v, b)}
+                />
+              ))
+            ) : selected.kind === "parallel" ? (
+              <Field>
+                <FieldLabel>并行会签分支</FieldLabel>
+                {targetOptions
+                  .filter(([v]) => v !== "none")
+                  .map(([id, text]) => (
+                    <Field key={id} orientation="horizontal">
+                      <Checkbox
+                        id={`branch-${id}`}
+                        disabled={!editing}
+                        checked={draft.edges.some(
+                          (e) => e.source === selected.id && e.target === id,
+                        )}
+                        onCheckedChange={(v) =>
+                          v
+                            ? connect(selected.id, id)
+                            : change((d) => {
+                                d.edges = d.edges.filter(
+                                  (e) =>
+                                    !(
+                                      e.source === selected.id &&
+                                      e.target === id
+                                    ),
+                                );
+                              })
+                        }
+                      />
+                      <FieldLabel htmlFor={`branch-${id}`}>{text}</FieldLabel>
+                    </Field>
+                  ))}
+                <FieldDescription>
+                  所有有效分支均完成后，汇聚节点才可继续。
+                </FieldDescription>
+              </Field>
+            ) : (
+              !["end", "terminate"].includes(selected.kind) && (
+                <Choice
+                  label="后续节点"
+                  value={
+                    draft.edges.find((e) => e.source === selected.id)?.target ||
+                    "none"
+                  }
+                  options={targetOptions}
+                  disabled={!editing}
+                  onChange={(v) => connect(selected.id, v)}
+                />
+              )
+            )}
+          </FieldGroup>
+        )}
+      </CardContent>
+      {selected && (
+        <CardFooter>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={!editing || selected.kind === "start"}
+            onClick={() => {
+              change((d) => {
+                d.nodes = d.nodes.filter((n) => n.id !== selected.id);
+                d.edges = d.edges.filter(
+                  (e) => e.source !== selected.id && e.target !== selected.id,
+                );
+              });
+              setSelectedId("");
+            }}
+          >
+            删除节点
+          </Button>
+        </CardFooter>
+      )}
+    </Card>
+  );
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold">自定义流程</h1>
-            <Badge variant="secondary">已发布</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            按角色编排业务，让每一步都清晰可见。
-          </p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold">自定义流程</h1>
+          <Badge variant="secondary">已发布</Badge>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2">
           <Button variant="outline" onClick={() => openFullscreen("dsl")}>
             <Maximize2 data-icon="inline-start" />
             全屏查看 DSL
           </Button>
-          <Button variant="outline" disabled={!editing} onClick={saveDraft}>
-            <Save data-icon="inline-start" />
-            保存草稿{dirty ? " · 未保存" : ""}
-          </Button>
-          <Button
-            disabled={!editing || errors.length > 0}
-            onClick={() => setConfirm("publish")}
-          >
-            发布配置
-          </Button>
+          <Button onClick={() => setConfirm("edit")}>修改流程</Button>
         </div>
       </div>
-      <Alert>
-        <ShieldCheck />
-        <AlertTitle>配置更新只影响后续发起的项目</AlertTitle>
-        <AlertDescription>
-          当前有 {inflight.length}{" "}
-          个在途项目，均保留发起时的规则。处理人按岗位或项目关系自动解析；管理员仅参与需求承接审批。
-        </AlertDescription>
-      </Alert>
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">
-            点击节点配置规则，拖动节点排列；拖动连接点或选择后续节点来连线。
-          </p>
-          {!editing ? (
-            <Button variant="outline" onClick={() => setConfirm("edit")}>
-              修改流程
-            </Button>
-          ) : (
-            <Badge variant="outline">编辑草稿 · 尚未生效</Badge>
-          )}
+      {!editing && (
+        <div
+          className="min-h-[480px] flex-1 overflow-hidden rounded-xl border"
+          aria-label="流程设计画布"
+        >
+          {canvas}
         </div>
-        {editing && errors.length > 0 && (
-          <Alert variant="destructive">
-            <AlertTitle>发布前请完善配置</AlertTitle>
-            <AlertDescription>
-              <ul className="list-disc pl-4">
-                {errors.map((e) => (
-                  <li key={e}>{e}</li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
-        <div className="grid items-start gap-4 xl:grid-cols-[190px_minmax(0,1fr)_300px]">
-          <Card>
-            <CardHeader>
-              <CardTitle>节点工具箱</CardTitle>
-              <CardDescription>无需编写代码</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FieldGroup>
-                <Choice
-                  label="节点类型"
-                  value={addKind}
-                  options={kindOptions}
-                  onChange={(v) => setAddKind(v as NodeKind)}
-                  disabled={!editing}
-                />
-                <Button
-                  variant="outline"
-                  disabled={!editing}
-                  onClick={() => {
-                    const id = uid();
-                    change((d) =>
-                      d.nodes.push({
-                        id,
-                        kind: addKind,
-                        name: nodeKinds[addKind],
-                        binding: "product",
-                        position: { x: 580, y: d.nodes.length * 90 },
-                        ...(addKind === "condition"
-                          ? {
-                              field: "amount" as const,
-                              operator: "gte" as const,
-                              value: "100000",
-                            }
-                          : {}),
-                      }),
-                    );
-                    setSelectedId(id);
-                  }}
-                >
-                  <Plus data-icon="inline-start" />
-                  添加节点
-                </Button>
-              </FieldGroup>
-            </CardContent>
-            <CardFooter className="flex flex-col items-start gap-2">
-              <Badge variant="outline">
-                <GitBranch />
-                条件分流
-              </Badge>
-              <Badge variant="outline">全员会签后汇聚</Badge>
-              <p className="text-xs text-muted-foreground">
-                审批和条件节点的左下连接点表示通过 / 成立，右下表示拒绝 /
-                不成立。点击连线按 Delete 可移除。
-              </p>
-            </CardFooter>
-          </Card>
-          <div className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-muted/20">
-            <div className="flex items-center justify-between border-b bg-background px-3 py-2">
-              <span className="text-sm text-muted-foreground">流程画布</span>
+      )}
+      <Dialog
+        open={editing}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditing(false);
+            setSelectedId("");
+          }
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="inset-0 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-3 rounded-none p-4 data-open:animate-none data-closed:animate-none sm:max-w-none"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <DialogHeader>
+              <DialogTitle>自定义流程 · 编辑草稿</DialogTitle>
+              <DialogDescription>
+                点击节点编辑，拖动节点排列或连接节点。退出后保留当前未发布的修改。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-wrap gap-2">
               <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => openFullscreen("graph")}
+                variant="outline"
+                onClick={() => setShowToolbox(!showToolbox)}
               >
-                <Maximize2 data-icon="inline-start" />
-                全屏流程图
+                <Plus data-icon="inline-start" />
+                添加节点
+              </Button>
+              <Button variant="outline" onClick={saveDraft}>
+                <Save data-icon="inline-start" />
+                保存草稿{dirty ? " · 未保存" : ""}
+              </Button>
+              <Button
+                disabled={errors.length > 0}
+                onClick={() => setConfirm("publish")}
+              >
+                发布配置
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setEditing(false);
+                  setSelectedId("");
+                }}
+              >
+                退出编辑
               </Button>
             </div>
-            <div className="h-[660px]" aria-label="流程设计画布">
-              <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                nodeTypes={nodeTypes}
-                fitView
-                minZoom={0.2}
-                maxZoom={1.5}
-                nodesDraggable={editing}
-                nodesConnectable={editing}
-                deleteKeyCode={editing ? ["Backspace", "Delete"] : null}
-                onNodeClick={(_, node) => setSelectedId(node.id)}
-                onNodesChange={(changes) => {
-                  const positions = applyNodeChanges(
-                    changes.filter((c) => c.type === "position"),
-                    nodes,
-                  );
-                  if (changes.some((c) => c.type === "position"))
-                    change((d) => {
-                      d.nodes.forEach((n) => {
-                        const pos = positions.find((p) => p.id === n.id);
-                        if (pos) n.position = pos.position;
-                      });
-                    });
-                }}
-                onEdgesDelete={(deleted) =>
-                  change((d) => {
-                    d.edges = d.edges.filter(
-                      (e) => !deleted.some((x) => x.id === e.id),
-                    );
-                  })
-                }
-                onConnect={(c) =>
-                  connect(
-                    c.source,
-                    c.target,
-                    c.sourceHandle === "yes"
-                      ? "yes"
-                      : c.sourceHandle === "no"
-                        ? "no"
-                        : undefined,
-                  )
-                }
-              >
-                <Background />
-                <Controls showInteractive={false} />
-              </ReactFlow>
-            </div>
           </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>节点配置</CardTitle>
-              <CardDescription>
-                {selected ? nodeKinds[selected.kind] : "选择画布中的节点"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {selected && (
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="node-name">节点名称</FieldLabel>
-                    <Input
-                      id="node-name"
-                      value={selected.name}
-                      disabled={!editing || selected.binding === "intake"}
-                      onChange={(e) => patch({ name: e.target.value })}
-                    />
-                  </Field>
-                  <Choice
-                    label="处理人绑定"
-                    value={selected.binding}
-                    options={bindingOptions.filter(
-                      ([b]) => b !== "intake" || selected.kind === "approval",
-                    )}
-                    disabled={!editing}
-                    onChange={(v) =>
-                      patch({
-                        binding: v as Binding,
-                        ...(v === "intake" ? { name: "需求承接审批" } : {}),
-                      })
-                    }
-                  />
-                  <FieldDescription>
-                    只保存角色或项目关系，不保存固定人员姓名。审批节点的全部处理人均需通过。
-                  </FieldDescription>
-                  {selected.kind === "condition" && (
-                    <>
-                      <Choice
-                        label="条件字段"
-                        value={selected.field || "amount"}
-                        options={[
-                          ["amount", "项目金额（元）"],
-                          ["priority", "优先级"],
-                          ["phase", "交付阶段"],
-                        ]}
-                        disabled={!editing}
-                        onChange={(v) =>
-                          patch({
-                            field: v as WorkflowNode["field"],
-                            operator: v === "amount" ? "gte" : "eq",
-                            value:
-                              v === "amount"
-                                ? "100000"
-                                : v === "phase"
-                                  ? "sample"
-                                  : "高",
-                          })
-                        }
-                      />
-                      <Choice
-                        label="判断方式"
-                        value={selected.operator || "gte"}
-                        options={
-                          selected.field === "amount"
-                            ? [
-                                ["gte", "大于等于"],
-                                ["eq", "等于"],
-                              ]
-                            : [["eq", "等于"]]
-                        }
-                        disabled={!editing}
-                        onChange={(v) => patch({ operator: v as "gte" | "eq" })}
-                      />
-                      {selected.field === "amount" ? (
-                        <Field>
-                          <FieldLabel htmlFor="condition-value">
-                            条件值
-                          </FieldLabel>
-                          <Input
-                            id="condition-value"
-                            type="number"
-                            min="0"
-                            value={selected.value || ""}
-                            disabled={!editing}
-                            onChange={(e) => patch({ value: e.target.value })}
-                          />
-                        </Field>
-                      ) : (
-                        <Choice
-                          label="条件值"
-                          value={selected.value || ""}
-                          options={
-                            selected.field === "phase"
-                              ? [
-                                  ["sample", "样例交付"],
-                                  ["full", "正式交付"],
-                                ]
-                              : [
-                                  ["高", "高"],
-                                  ["中", "中"],
-                                  ["低", "低"],
-                                ]
-                          }
-                          disabled={!editing}
-                          onChange={(v) => patch({ value: v })}
-                        />
-                      )}
-                    </>
-                  )}
-                  {["condition", "approval"].includes(selected.kind) ? (
-                    (["yes", "no"] as const).map((b) => (
-                      <Choice
-                        key={b}
-                        label={
-                          b === "yes" ? "成立 / 通过后" : "不成立 / 拒绝后"
-                        }
-                        value={
-                          draft.edges.find(
-                            (e) => e.source === selected.id && e.branch === b,
-                          )?.target || "none"
-                        }
-                        options={targetOptions}
-                        disabled={!editing}
-                        onChange={(v) => connect(selected.id, v, b)}
-                      />
-                    ))
-                  ) : selected.kind === "parallel" ? (
-                    <Field>
-                      <FieldLabel>并行会签分支</FieldLabel>
-                      {targetOptions
-                        .filter(([v]) => v !== "none")
-                        .map(([id, text]) => (
-                          <Field key={id} orientation="horizontal">
-                            <Checkbox
-                              id={`branch-${id}`}
-                              disabled={!editing}
-                              checked={draft.edges.some(
-                                (e) =>
-                                  e.source === selected.id && e.target === id,
-                              )}
-                              onCheckedChange={(v) =>
-                                v
-                                  ? connect(selected.id, id)
-                                  : change((d) => {
-                                      d.edges = d.edges.filter(
-                                        (e) =>
-                                          !(
-                                            e.source === selected.id &&
-                                            e.target === id
-                                          ),
-                                      );
-                                    })
-                              }
-                            />
-                            <FieldLabel htmlFor={`branch-${id}`}>
-                              {text}
-                            </FieldLabel>
-                          </Field>
-                        ))}
-                      <FieldDescription>
-                        所有有效分支均完成后，汇聚节点才可继续。
-                      </FieldDescription>
-                    </Field>
-                  ) : (
-                    !["end", "terminate"].includes(selected.kind) && (
-                      <Choice
-                        label="后续节点"
-                        value={
-                          draft.edges.find((e) => e.source === selected.id)
-                            ?.target || "none"
-                        }
-                        options={targetOptions}
-                        disabled={!editing}
-                        onChange={(v) => connect(selected.id, v)}
-                      />
-                    )
-                  )}
-                </FieldGroup>
-              )}
-            </CardContent>
-            {selected && (
-              <CardFooter>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={!editing || selected.kind === "start"}
-                  onClick={() => {
-                    change((d) => {
-                      d.nodes = d.nodes.filter((n) => n.id !== selected.id);
-                      d.edges = d.edges.filter(
-                        (e) =>
-                          e.source !== selected.id && e.target !== selected.id,
-                      );
-                    });
-                    setSelectedId("start");
-                  }}
-                >
-                  删除节点
-                </Button>
-              </CardFooter>
+          {errors.length > 0 && (
+            <Alert variant="destructive">
+              <AlertTitle>发布前请完善配置</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc pl-4">
+                  {errors.map((error) => (
+                    <li key={error}>{error}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+          <div
+            className="relative min-h-0 flex-1 overflow-hidden rounded-xl border"
+            aria-label="流程编辑画布"
+          >
+            {canvas}
+            {showToolbox && (
+              <div className="absolute top-3 left-3 max-h-[calc(100%-1.5rem)] w-56 overflow-y-auto">
+                {toolbox}
+              </div>
             )}
-          </Card>
-        </div>
-        <Field>
-          <FieldLabel htmlFor="version-note">更新说明</FieldLabel>
-          <Input
-            id="version-note"
-            placeholder="例如：高金额项目增加产品与研发联合会签"
-            disabled={!editing}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </Field>
-      </div>
+            {selected && (
+              <div className="absolute top-3 right-3 bottom-3 w-[min(320px,calc(100%-1.5rem))]">
+                {inspector}
+              </div>
+            )}
+          </div>
+          <Field orientation="horizontal">
+            <FieldLabel htmlFor="version-note">更新说明</FieldLabel>
+            <Input
+              id="version-note"
+              placeholder="例如：高金额项目增加产品与研发联合会签"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </Field>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={!!confirm}
         onOpenChange={(open) => {

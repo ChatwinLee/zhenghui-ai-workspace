@@ -53,6 +53,11 @@ test("administrator can view fullscreen DSL, edit and publish without changing i
   ).toBeVisible();
   await expect(page.getByText("版本管理", { exact: true })).toHaveCount(0);
   await expect(page.getByText("模拟试跑", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("节点工具箱", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("节点配置", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("更新说明")).toHaveCount(0);
+  await page.locator('.react-flow__node[data-id="product"]').click();
+  await expect(page.getByText("节点配置", { exact: true })).toHaveCount(0);
   const before = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("zhenghui-workspace-v1")!).projects.map(
       (p: { workflowSnapshot?: unknown }) => p.workflowSnapshot,
@@ -80,6 +85,16 @@ test("administrator can view fullscreen DSL, edit and publish without changing i
   await page.getByRole("button", { name: "修改流程", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText("在途项目");
   await page.getByRole("button", { name: "继续编辑", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("编辑草稿");
+  await expect
+    .poll(async () => (await page.getByRole("dialog").boundingBox())?.width)
+    .toBe(1512);
+  await expect(page.getByText("节点配置", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("节点工具箱", { exact: true })).toHaveCount(0);
+  await page.locator('.react-flow__node[data-id="product"]').click();
+  await expect(page.getByText("节点配置", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "关闭节点配置" }).click();
+  await expect(page.getByText("节点配置", { exact: true })).toHaveCount(0);
   await page.locator('.react-flow__node[data-id="product"]').click();
   await page.getByLabel("节点名称", { exact: true }).fill("联合产品方案评审");
   await page.getByRole("button", { name: /保存草稿/ }).click();
